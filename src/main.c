@@ -11,7 +11,9 @@
 #include <ti/real.h>
 
 #include <sys/timers.h>
+
 #include "funcs.h"
+#include "level.h"
 
 /* This is zeldamon, a game for the ti-84+ce
  * The original version was written in TI-BASIC, but I decided to rewrite it in c
@@ -29,11 +31,8 @@ int main(void) {
   char oldCrY;
   char oldEnX;
   char oldEnY;
-  char temp[16];
-  char temp3[3];
-  char temp5[5];
   bool run = true;
-  bool dispUpd;
+  bool dispUpd = true;
   struct Player player;
   struct Map mainMap;
   struct Creature creature;
@@ -53,11 +52,31 @@ int main(void) {
   kb_EnableOnLatch();
   kb_ClearOnLatch();
 
+  /*  Load level  */
+  const uint8_t stat = loadLevelFromAppVar(&mainMap, "ZML1");
+  char msg[9];
+  if(stat == 0) {
+    strcpy(msg, "load suc");
+  }
+  else if(stat == 1){
+    strcpy(msg, "inv load");
+  }
+  else if(stat == 2) {
+    strcpy(msg, "inv name");
+  }
+  else if(stat == 4) {
+    strcpy(msg, "uh oh...");
+  }
+  else {
+    strcpy(msg, "inv msg.");
+  }
+  xv_MoveCursorAndPrint(msg, 4, 0);
+      
 
   os_SetCursorPos(3, 0);
   os_PutStrFull("Press enter to start...   ");
 
-  while (!os_GetCSC());
+  xv_Pause();
   os_ClrHome();
   generateNewCreatureSimple(&player, &creature, &mainMap);
   generateNewCreature(&player, &mainMap, &energy, &creature);
@@ -76,37 +95,47 @@ int main(void) {
 
     kb_Scan();  /* get keys pressed */
 
-    
 
-    if(kb_Data[7] & kb_Down && player.y < mainMap.ymax && empty(mainMap.map[player.y+1][player.x])) {
-      if(!(blockedSpace(&creature, player.y+1, player.x) || blockedSpace(&energy, player.y+1, player.x))) {
+    if(kb_Data[7] & kb_Down) {
+      if(player.y < mainMap.ymax && empty(mainMap.map[player.y+1][player.x]) && !(blockedSpace(&creature, player.y+1, player.x) || blockedSpace(&energy, player.y+1, player.x))) {
 	dispUpd = true;
 	player.y++;
-	player.dir = Down;
       }
+      player.dir = Down;
     }
-    if(kb_Data[7] & kb_Left && player.x > mainMap.xmin && empty(mainMap.map[player.y][player.x-1])) {
-      if(!(blockedSpace(&creature, player.y, player.x-1) || blockedSpace(&energy, player.y, player.x-1))) {
+    if(kb_Data[7] & kb_Left) {
+      if(player.x > mainMap.xmin && empty(mainMap.map[player.y][player.x-1]) && !(blockedSpace(&creature, player.y, player.x-1) || blockedSpace(&energy, player.y, player.x-1))) {
 	dispUpd = true;
 	player.x--;
-	player.dir = Left;
       }
+      player.dir = Left;
     }
-    if(kb_Data[7] & kb_Right && player.x < mainMap.xmax && empty(mainMap.map[player.y][player.x+1])) {
-      if(!(blockedSpace(&creature, player.y, player.x+1) || blockedSpace(&energy, player.y, player.x+1))) {
+    if(kb_Data[7] & kb_Right) {
+      if(player.x < mainMap.xmax && empty(mainMap.map[player.y][player.x+1]) && !(blockedSpace(&creature, player.y, player.x+1) || blockedSpace(&energy, player.y, player.x+1))) {
 	dispUpd = true;
 	player.x++;
-	player.dir = Right;
       }
+      player.dir = Right;
     }
-    if(kb_Data[7] & kb_Up && player.y > mainMap.ymin && empty(mainMap.map[player.y-1][player.x])) {
-      if(!(blockedSpace(&creature, player.y-1, player.x) || blockedSpace(&energy, player.y-1, player.x))) {
+    if(kb_Data[7] & kb_Up) {
+      if(player.y > mainMap.ymin && empty(mainMap.map[player.y-1][player.x]) && !(blockedSpace(&creature, player.y-1, player.x) || blockedSpace(&energy, player.y-1, player.x))) {
 	dispUpd = true;
 	player.y--;
-	player.dir = Up;
       }
+      player.dir = Up;
     }
     if(kb_Data[1] & kb_2nd) {
+      /*  pausa  */
+
+
+      xv_MoveCursorAndPrint("Game Paused. Press", 0, 6);
+      xv_MoveCursorAndPrint("Enter to resume   ", 1, 6);
+      xv_Pause();
+      xv_MoveCursorAndPrint("                  ", 0, 6);
+      xv_MoveCursorAndPrint("                  ", 1, 6);
+      dispUpd = true;
+    }
+    if(kb_Data[1] & kb_Yequ) {
       /* capture */
       if(player.ep > 0 && canCatchCreature(&player, &creature, &mainMap)) {
 	player.captures++;
@@ -115,7 +144,9 @@ int main(void) {
 	dispUpd = true;
       }
       else if(canCatchCreature(&player, &energy, &mainMap)) {
-	player.ep++;
+	if(randInt(0, 5) > 1) {
+	  player.ep++;
+	}
 	generateNewCreature(&player, &mainMap, &energy, &creature);
 	dispUpd = true;
       }
@@ -129,36 +160,25 @@ int main(void) {
     if(dispUpd) {
       /* add delay because asm is much faster than BASIC */
       delay(100);
+
+      mapDraw(&mainMap);
+
       os_SetCursorPos(oldY, oldX + mainMap.xpad);
       os_PutStrLine(" ");
       os_SetCursorPos(player.y, player.x + mainMap.xpad);
-      os_PutStrLine("\x5b");
+      os_PutStrLine(c_theta);
       os_SetCursorPos(oldCrY, oldCrX + mainMap.xpad);
       os_PutStrLine(" ");
       os_SetCursorPos(creature.y, creature.x + mainMap.xpad);
-      os_PutStrLine("\x0b");
+      os_PutStrLine(c_plotPlus);
       os_SetCursorPos(oldEnY, oldEnX + mainMap.xpad);
       os_PutStrLine(" ");
       os_SetCursorPos(energy.y, energy.x + mainMap.xpad);
-      os_PutStrLine("\x0a");
+      os_PutStrLine(c_plotBox);
 
-      real_t t = os_Int24ToReal((int24_t) player.ep);
-      os_RealToStr(temp, &(t), 6, 1, -1);
-      memcpy(temp3, temp, 3);
-      os_SetCursorPos(1, 3);
-      os_PutStrLine(temp3);
-      /*  Maybe make this series of function calls and casts into a external function to make this less convoluteed */
-      t = os_Int24ToReal((int24_t) player.hp);
-      os_RealToStr(temp, &(t), 6, 1, -1);
-      memcpy(temp3, temp, 3);
-      os_SetCursorPos(0, 3);
-      os_PutStrLine(temp3);
-
-      t = os_Int24ToReal((int24_t) player.captures);
-      os_RealToStr(temp, &(t), 6, 1, -1);
-      memcpy(temp5, temp, 3);
-      os_SetCursorPos(3, 0);
-      os_PutStrLine(temp5);
+      printNCharsOfInt(player.hp, 2, 0, 3);
+      printNCharsOfInt(player.ep, 2, 1, 3);
+      printNCharsOfInt(player.captures, 5, 3, 0);
 
     }
   } while(run);

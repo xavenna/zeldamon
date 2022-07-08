@@ -3,7 +3,7 @@
 Zeldamon is a game for the TI-84 Plus CE. It was originally coded in TI-BASIC, but I decided to rewrite it in C for increased speed, power, and flexibility.
 
 
-## Controls
+### Controls
 
 Arrow keys:  move player (theta)
 2nd:  	     capture

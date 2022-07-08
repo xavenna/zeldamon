@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ti/screen.h>
 #include <ti/getcsc.h>  /*  Included for the loading screen  */
+#include <ti/real.h>
 #include <sys/timers.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -67,7 +68,7 @@ void generateNewCreature(struct Player* p, struct Map* m, struct Creature* c, st
   do {
     c->x = randInt(0, m->xmax);
     c->y = randInt(0, m->ymax);
-  } while(!empty(m->map[c->y][c->x]) || (p->x == c->x && p->y == c->y) || (p->x == e->x && p->y == e->y));
+  } while(!creatureSpawn(m->map[c->y][c->x]) || (p->x == c->x && p->y == c->y) || (p->x == e->x && p->y == e->y));
 }
 
 void generateNewCreatureSimple(struct Player* p, struct Creature* c, struct Map* m) {
@@ -75,18 +76,82 @@ void generateNewCreatureSimple(struct Player* p, struct Creature* c, struct Map*
   do {
     c->x = randInt(0, m->xmax);
     c->y = randInt(0, m->ymax);
-  } while(!empty(m->map[c->y][c->x]) || (p->x == c->x && p->y == c->y));
+  } while(!creatureSpawn(m->map[c->y][c->x]) || (p->x == c->x && p->y == c->y));
 }
 
-bool empty(int val) {
+bool empty(uint8_t val) {
+  /*  can a player move through here?  */
   switch(val) {
-  case 0:  /*  all values that are considered empty go here */
-    return true;
-  default:
+  case 0xdd:
+  case 0xbe:
+  case 0xbf:
+  case 0xcd:
+  case 0x80:
+  case 0xca:
+  case 0x7f:
+  case 0xba:
+  case 0xde:
+  case 0x0c:
+  case 0xf6:
+  case 0xf8:
+  case 0xce:
     return false;
+  default:
+    return true;
+  }
+}
+bool creatureSpawn(uint8_t val) {
+  /*  determines whether a creature can be spawned in on target space  */
+  switch(val) {
+  case '<':
+  case '>':
+  case '^':
+  case 'v':
+  case '@':
+  case '-':
+  case '|':
+  case 0xdd:
+  case 0xbe:
+  case 0xbf:
+  case 0xcd:
+  case 0xf0:
+  case 0x80:
+  case 0xca:
+  case 0x09:
+  case 0x7f:
+  case 0xba:
+  case 0xde:
+  case 0x0c:
+  case 0xf6:
+  case 0xf8:
+  case 0xce:
+  case 0xb8:
+    return false;
+  default:
+    return true;
   }
 }
 
 bool blockedSpace(struct Creature* c, char y, char x) {
   return (c->x == x && c->y == y);
 }
+
+void printNCharsOfInt(int24_t num, size_t len, char y, char x) {  /*  Only prints up to 12 chars  */
+  char temp[12];
+  char temp2[12];
+  const real_t t = os_Int24ToReal(num);
+  os_RealToStr(temp, &(t), 6, 1, -1);
+  strncpy(temp2, temp, len+1);
+  os_SetCursorPos(y, x);
+  os_PutStrLine(temp2);
+}
+
+void mapDraw(struct Map* m) {
+  char mapBuf[200];
+  for(int i=0;i<200;i++) {
+    mapBuf[i] = m->map[(int)i/20][i%20];
+  }
+  xv_MoveCursorAndPrint(mapBuf, 0, 0);
+}
+
+
