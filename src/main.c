@@ -38,9 +38,10 @@ int main(void) {
 
   int xlist[240];
   int ylist[240];
-  memset(xlist, 0, sizeof(xlist));
-  memset(ylist, 0, sizeof(ylist));
-
+  for(int i=0;i<240;i++) {
+    xlist[i] = -1;
+    ylist[i] = -1;
+  }
   struct Player player;
   struct Map mainMap;
   struct Creature creature;
@@ -99,6 +100,10 @@ int main(void) {
   mapDraw(&mainMap, true, -1, -1, -1);  //force full map draw
   do {  /* Main program loop */
 
+    for(int i=0;i<240;i++) {
+      xlist[i] = -1;
+      ylist[i] = -1;
+    }
     oldX = player.x;
     oldY = player.y;
     oldCrX = creature.x;
@@ -245,7 +250,7 @@ int main(void) {
       }
 
       //mapDraw(&mainMap, false, oldY, oldCrY, oldEnY);
-      newMapDraw(&mainMap, false, xlist, ylist);
+      newMapDraw(&mainMap, false, ylist, xlist);
 
       os_SetCursorPos(player.y, player.x + mainMap.xpad);
       os_PutStrLine((c_theta));

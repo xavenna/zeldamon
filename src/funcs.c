@@ -162,6 +162,7 @@ void printNCharsOfInt(int24_t num, size_t len, char y, char x) {  /*  Only print
   const real_t t = os_Int24ToReal(num);
   os_RealToStr(temp, &(t), 6, 1, -1);
   strncpy(temp2, temp, len+1);
+  temp2[len] = 0;
   os_SetCursorPos(y, x);
   os_PutStrLine(temp2);
 }
