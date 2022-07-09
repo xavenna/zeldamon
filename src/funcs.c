@@ -14,6 +14,10 @@ void initPlayer(struct Player *p) {
   p->y = 0;
   p->hp = 5;
   p->ep = 5;
+  p->sw = 0;
+  p->bow = 0;
+  p->key = 0;
+  p->coin = 0;
   p->dir = Up;
   p->captures = 0;
 }
@@ -23,7 +27,8 @@ void initMap(struct Map *m) {
   m->xmax = 19;
   m->ymax = 9;
   m->xpad = 6;
-  memset(m->map[0], 0, 20*10*sizeof(uint8_t));
+  //memset(m->map[0], 0, 20*10*sizeof(uint8_t)); //this isn't needed b/c it's loaded from appvar
+  //memset(m->sub[0], 0, 20*10*sizeof(uint8_t));
 }
 
 void initCreature(struct Creature *c) {
@@ -42,6 +47,8 @@ void screenSetup() {
   os_SetCursorPos(1, 0);
   os_PutStrLine("EP:  ");
   os_SetCursorPos(2, 0);
+  os_PutStrLine("GP:  ");
+  os_SetCursorPos(3, 0);
   os_PutStrLine("Capt:");
 }
 
@@ -79,23 +86,36 @@ void generateNewCreatureSimple(struct Player* p, struct Creature* c, struct Map*
   } while(!creatureSpawn(m->map[c->y][c->x]) || (p->x == c->x && p->y == c->y));
 }
 
-bool empty(uint8_t val) {
+bool empty(uint8_t val, enum Direction dir) {
   /*  can a player move through here?  */
   switch(val) {
-  case 0xdd:
-  case 0xbe:
-  case 0xbf:
-  case 0xcd:
-  case 0x80:
-  case 0xca:
-  case 0x7f:
-  case 0xba:
-  case 0xde:
-  case 0x0c:
-  case 0xf6:
-  case 0xf8:
-  case 0xce:
+  case i_plotSquare:
+  case i_cursEq:
+  case i_small0:
+  case i_upExcl:
+  case i_deltaCap:
+  case i_delta:
+  case i_omega:
+  case i_xSuper:
+  case i_ellipsis:
+  case i_boldN:
+  case i_doubleCloseParen:
+  case i_cursDotOut:
+  case i_plotDot:
+  case '@':
     return false;
+  case '<':
+    return dir != Right;
+  case '>':
+    return dir != Left;
+  case '^':
+    return dir != Down;
+  case 'v':
+    return dir != Up;
+  case '-':
+    return dir == Left || dir == Right;
+  case '|':
+    return dir == Up || dir == Down;
   default:
     return true;
   }
@@ -110,22 +130,22 @@ bool creatureSpawn(uint8_t val) {
   case '@':
   case '-':
   case '|':
-  case 0xdd:
-  case 0xbe:
-  case 0xbf:
-  case 0xcd:
-  case 0xf0:
-  case 0x80:
-  case 0xca:
-  case 0x09:
-  case 0x7f:
-  case 0xba:
-  case 0xde:
-  case 0x0c:
-  case 0xf6:
-  case 0xf8:
-  case 0xce:
-  case 0xb8:
+  case i_boldN:
+  case i_deltaCap:
+  case i_delta:
+  case i_xSuper:
+  case i_bigArrDown:
+  case i_small0:
+  case i_omega:
+  case i_wideX:
+  case i_cursEq:
+  case i_upExcl:
+  case i_doubleCloseParen:
+  case i_plotSquare:
+  case i_cursDotOut:
+  case i_plotDot:
+  case i_ellipsis:
+  case i_diuresis:
     return false;
   default:
     return true;
@@ -158,4 +178,134 @@ void mapDraw(struct Map* m, bool f, char o1, char o2, char o3) {
   }
 }
 
+void newMapDraw(struct Map* m, bool f, int* y, int* x) {
+  if(f) {
+    mapDraw(m, true, 0, 0, 0);
+    return;
+  }
+  char buf[2] = " ";
+  for(int i=0;;i++) {
+    if(x[i] == -1 || y[i] == -1)
+      break;
+    os_SetCursorPos(y[i], m->xpad + x[i]);
+    buf[0] = m->map[y[i]][x[i]];
+    os_PutStrLine(buf);
+  }
+}
 
+int facing(struct Player* p, struct Map* m) {
+  switch(p->dir) {
+  case Up:
+    if(p->y == 0)
+      return -1;
+    return m->map[p->y-1][p->x];
+  case Down:
+    if(p->y == m->ymax)
+      return -1;
+    return m->map[p->y+1][p->x];
+  case Left:
+    if(p->x == 0)
+      return -1;
+    return m->map[p->y][p->x-1];
+  case Right:
+    if(p->x == m->xmax)
+      return -1;
+    return m->map[p->y][p->x+1];
+  default:
+    return -1;
+  }
+}
+
+int fsx(struct Player* p, struct Map* m) {
+  switch(p->dir) {
+  case Up:
+    if(p->y == 0)
+      return -1;
+    return p->x;
+  case Down:
+    if(p->y == m->ymax)
+      return -1;
+    return p->x;
+  case Left:
+    if(p->x == 0)
+      return -1;
+    return p->x-1;
+  case Right:
+    if(p->x == m->xmax)
+      return -1;
+    return p->x+1;
+  default:
+    return -1;
+  }
+}
+int fsy(struct Player* p, struct Map* m) {
+  switch(p->dir) {
+  case Up:
+    if(p->y == 0)
+      return -1;
+    return p->y-1;
+  case Down:
+    if(p->y == m->ymax)
+      return -1;
+    return p->y+1;
+  case Left:
+    if(p->x == 0)
+      return -1;
+    return p->y;
+  case Right:
+    if(p->x == m->xmax)
+      return -1;
+    return p->y;
+  default:
+    return -1;
+  }
+}
+void handleFacingSpace(struct Player* p, struct Map* m, int fs) { /*  this handles interactions  */
+  /*   if this routine is entered, that means that facingSpace is on the map   */
+  const int fx = fsx(p, m);
+  const int fy = fsy(p, m);
+  switch(fs) {
+  case i_cursEq:
+    /*  crate  */
+
+    m->map[fy][fx] = m->sub[fy][fx];
+    break;
+  case i_omega:
+    /* key */
+    p->key++;
+    m->map[fy][fx] = ' ';
+    break;
+  case i_upExcl:
+    /*  sword  */
+    p->sw = SWORD_MAX_DURABILITY;
+    m->map[fy][fx] = ' ';
+    break;
+  case i_small0:
+    /*  coin  */
+    p->coin++;
+    m->map[fy][fx] = ' ';
+    break;
+  case i_delta:
+    /*  flask  */
+    break;
+  case i_deltaCap:
+    /*  energy up  */
+    p->ep++;
+    m->map[fy][fx] = ' ';
+    break;
+  case '@':
+    /*  breakable wall  */
+    p->sw--;
+    m->map[fy][fx] = ' ';
+    break;
+  case i_cursDotOut:
+    /*  locked door  */
+    if(p->key > 0) {
+      p->key--;
+      m->map[fy][fx] = ' ';
+    }
+    break;
+  default:
+      break;
+  }
+}
