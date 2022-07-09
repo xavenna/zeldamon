@@ -23,7 +23,7 @@ void initMap(struct Map *m) {
   m->xmax = 19;
   m->ymax = 9;
   m->xpad = 6;
-  memset(m->map[0], 0, 20*10*sizeof(int));
+  memset(m->map[0], 0, 20*10*sizeof(uint8_t));
 }
 
 void initCreature(struct Creature *c) {
@@ -146,12 +146,16 @@ void printNCharsOfInt(int24_t num, size_t len, char y, char x) {  /*  Only print
   os_PutStrLine(temp2);
 }
 
-void mapDraw(struct Map* m) {
-  char mapBuf[200];
-  for(int i=0;i<200;i++) {
-    mapBuf[i] = m->map[(int)i/20][i%20];
+void mapDraw(struct Map* m, bool f, char o1, char o2, char o3) {
+  char mapBuf[21];
+  mapBuf[20] = '\0';
+  for(int i=0;i<10;i++) {
+    if(!(o1 == i || o2 == i || o3 == i) && !f)
+      continue;
+    memcpy(mapBuf, (char*) m->map[i], 20);
+    os_SetCursorPos(i, m->xpad);
+    os_PutStrLine(mapBuf);
   }
-  xv_MoveCursorAndPrint(mapBuf, 0, 0);
 }
 
 

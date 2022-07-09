@@ -46,5 +46,5 @@ bool blockedSpace(struct Creature*, char, char);
 bool empty(uint8_t);
 bool creatureSpawn(uint8_t);
 void printNCharsOfInt(int24_t, size_t, char, char);
-void mapDraw(struct Map*);
+void mapDraw(struct Map*, bool, char, char, char);
 #endif

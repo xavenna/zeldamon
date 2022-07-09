@@ -43,12 +43,13 @@ int main(void) {
   initCreature(&energy);
 
   /* SET UP SCREEN */
-  os_ClrHome();  /* clear screen */
+  
+  os_ClrHome(); 
   os_SetCursorPos(0, 0);
   os_PutStrFull("Zeldamon v0.0.0a          Created by xavenna        ");
   os_SetCursorPos(3,0);
   os_PutStrFull("Loading...                \x5b...\x0b");
-
+  
   kb_EnableOnLatch();
   kb_ClearOnLatch();
 
@@ -78,11 +79,13 @@ int main(void) {
 
   xv_Pause();
   os_ClrHome();
+
   generateNewCreatureSimple(&player, &creature, &mainMap);
   generateNewCreature(&player, &mainMap, &energy, &creature);
 
   /*  Setup Status Screen  */
   screenSetup();
+  mapDraw(&mainMap, true, -1, -1, -1);  //force full map draw
   do {  /* Main program loop */
 
     dispUpd = false;
@@ -95,7 +98,7 @@ int main(void) {
 
     kb_Scan();  /* get keys pressed */
 
-
+    
     if(kb_Data[7] & kb_Down) {
       if(player.y < mainMap.ymax && empty(mainMap.map[player.y+1][player.x]) && !(blockedSpace(&creature, player.y+1, player.x) || blockedSpace(&energy, player.y+1, player.x))) {
 	dispUpd = true;
@@ -124,19 +127,22 @@ int main(void) {
       }
       player.dir = Up;
     }
+    
     if(kb_Data[1] & kb_2nd) {
-      /*  pausa  */
+      /*  pause  */
 
-
+      
       xv_MoveCursorAndPrint("Game Paused. Press", 0, 6);
       xv_MoveCursorAndPrint("Enter to resume   ", 1, 6);
       xv_Pause();
       xv_MoveCursorAndPrint("                  ", 0, 6);
       xv_MoveCursorAndPrint("                  ", 1, 6);
       dispUpd = true;
+      
     }
     if(kb_Data[1] & kb_Yequ) {
       /* capture */
+      
       if(player.ep > 0 && canCatchCreature(&player, &creature, &mainMap)) {
 	player.captures++;
 	player.ep--;
@@ -150,6 +156,7 @@ int main(void) {
 	generateNewCreature(&player, &mainMap, &energy, &creature);
 	dispUpd = true;
       }
+      
     }
     if(kb_On) {
       /* break */
@@ -159,22 +166,29 @@ int main(void) {
     /*  refresh display */
     if(dispUpd) {
       /* add delay because asm is much faster than BASIC */
-      delay(100);
+      delay(40);
 
-      mapDraw(&mainMap);
+      if(oldX != player.x || oldY != player.y) {
+	os_SetCursorPos(oldY, oldX + mainMap.xpad);
+	os_PutStrLine(" ");
+      }
+      if(oldCrX != creature.x || oldCrY != creature.y) {
+	os_SetCursorPos(oldCrY, oldCrX + mainMap.xpad);
+	os_PutStrLine(" ");
+      }
+      if(oldEnX != energy.x || oldEnY != energy.y) {
+	os_SetCursorPos(oldEnY, oldEnX + mainMap.xpad);
+	os_PutStrLine(" ");
+      }
 
-      os_SetCursorPos(oldY, oldX + mainMap.xpad);
-      os_PutStrLine(" ");
+      mapDraw(&mainMap, false, oldY, oldCrY, oldEnY);
+
       os_SetCursorPos(player.y, player.x + mainMap.xpad);
-      os_PutStrLine(c_theta);
-      os_SetCursorPos(oldCrY, oldCrX + mainMap.xpad);
-      os_PutStrLine(" ");
+      os_PutStrLine((c_theta));
       os_SetCursorPos(creature.y, creature.x + mainMap.xpad);
-      os_PutStrLine(c_plotPlus);
-      os_SetCursorPos(oldEnY, oldEnX + mainMap.xpad);
-      os_PutStrLine(" ");
+      os_PutStrLine((c_plotPlus));
       os_SetCursorPos(energy.y, energy.x + mainMap.xpad);
-      os_PutStrLine(c_plotBox);
+      os_PutStrLine((c_plotBox));
 
       printNCharsOfInt(player.hp, 2, 0, 3);
       printNCharsOfInt(player.ep, 2, 1, 3);
