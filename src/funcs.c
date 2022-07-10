@@ -186,8 +186,10 @@ void newMapDraw(struct Map* m, bool f, int* y, int* x) {
   }
   char buf[2] = " ";
   for(int i=0;;i++) {
-    if(x[i] == -1 || y[i] == -1)
+    if(x[i] == -2 || y[i] == -2)
       break;
+    if(x[i] == -1 || y[i] == -1)
+      continue;
     os_SetCursorPos(y[i], m->xpad + x[i]);
     buf[0] = m->map[y[i]][x[i]];
     os_PutStrLine(buf);

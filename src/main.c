@@ -35,6 +35,7 @@ int main(void) {
   bool run = true;
   bool dispUpd = true;
   bool statUpd = true;
+  bool action = false;
 
   int xlist[240];
   int ylist[240];
@@ -189,6 +190,7 @@ int main(void) {
 	  player.ep--;
 	  generateNewCreature(&player, &mainMap, &creature, &energy);
 	  dispUpd = true;
+	  action = true;
 	}
 	else if(canCatchCreature(&player, &energy, &mainMap)) {
 	  if(randInt(0, 5) > 1) {
@@ -196,11 +198,13 @@ int main(void) {
 	  }
 	  generateNewCreature(&player, &mainMap, &energy, &creature);
 	  dispUpd = true;
+	  action = true;
 	}
 	int facingSpace = facing(&player, &mainMap);
 	if(facingSpace != -1) {  /*  -1 means that player is at the edge of the map  */
 	  handleFacingSpace(&player, &mainMap, facingSpace);
 	  dispUpd = true;
+	  action = true;
 	}
       }
     }
@@ -209,21 +213,30 @@ int main(void) {
       run = false;
     }
     
-    xlist[0] = oldX;
-    xlist[1] = player.x;
-    xlist[2] = oldEnX;
-    xlist[3] = energy.x;
-    xlist[4] = oldCrX;
-    xlist[5] = creature.x;
-    xlist[6] = fsx(&player, &mainMap);
-
-    ylist[0] = oldY;
-    ylist[1] = player.y;
-    ylist[2] = oldEnY;
-    ylist[3] = energy.y;
-    ylist[4] = oldCrY;
-    ylist[5] = creature.y;
-    ylist[6] = fsy(&player, &mainMap);
+    if(oldX != player.x || oldY != player.y) {
+      xlist[0] = oldX;
+      xlist[1] = player.x;
+      ylist[0] = oldY;
+      ylist[1] = player.y;
+    }
+    if(oldEnX != energy.x || oldEnY != energy.y) {
+      xlist[2] = oldEnX;
+      xlist[3] = energy.x;
+      ylist[2] = oldEnY;
+      ylist[3] = energy.y;
+    }
+    if(oldCrX != creature.x || oldCrY != creature.y) {
+      xlist[4] = oldCrX;
+      xlist[5] = creature.x;
+      ylist[4] = oldCrY;
+      ylist[5] = creature.y;
+    }
+    if(action) {
+      xlist[6] = fsx(&player, &mainMap);
+      ylist[6] = fsy(&player, &mainMap);
+    }
+    xlist[7] = -2;  /*  Terminate  */
+    ylist[7] = -2;
 
     /*  refresh display */
     if(dispUpd || statUpd) {
@@ -261,6 +274,7 @@ int main(void) {
     }
     dispUpd = false;
     statUpd = false;
+    action = false;
     programCounter += (programCounter==249? -249 : 1);
   } while(run);
   kb_DisableOnLatch();
