@@ -16,7 +16,7 @@
 #define c_boldArrUp "\x06"
 #define c_boldArrDown "\x07"
 #define c_integral "\x08"
-#define c_wideX "\x09"      /// I don"t know what this represents
+#define c_wideX "\x09"
 #define c_plotBox "\x0a"
 #define c_plotPlus "\x0b"
 #define c_plotSquare "\x0c"
@@ -131,7 +131,7 @@
 #define i_boldArrUp 0x06
 #define i_boldArrDown 0x07
 #define i_integral 0x08
-#define i_wideX 0x09      /// I don"t know what this represents
+#define i_wideX 0x09
 #define i_plotBox 0x0a
 #define i_plotPlus 0x0b
 #define i_plotSquare 0x0c

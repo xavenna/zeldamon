@@ -1,4 +1,3 @@
-/*#include <sys/lcd.h> */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +10,7 @@
 #include <ti/real.h>
 
 #include <sys/timers.h>
+#include <sys/util.h>
 
 #include "funcs.h"
 #include "level.h"
@@ -36,6 +36,7 @@ int main(void) {
   bool dispUpd = true;
   bool statUpd = true;
   bool action = false;
+  bool move = false;
 
   int xlist[240];
   int ylist[240];
@@ -47,10 +48,18 @@ int main(void) {
   struct Map mainMap;
   struct Creature creature;
   struct Creature energy;
+  struct Enemy enemy[ENEMY_LIMIT];  //enemy limit is the number of enemies that can be active at once
   initPlayer(&player);
   initMap(&mainMap);
   initCreature(&creature);
   initCreature(&energy);
+  for(int i=0;i<ENEMY_LIMIT;i++) {
+    initEnemy(&(enemy[i]));
+  }
+  enemy[0].active = true;
+  enemy[0].y = 7;
+  enemy[0].x = 15;
+  enemy[0].targetMode = Random;
 
   /* SET UP SCREEN */
   
@@ -102,15 +111,21 @@ int main(void) {
   do {  /* Main program loop */
 
     for(int i=0;i<240;i++) {
-      xlist[i] = -1;
       ylist[i] = -1;
+      xlist[i] = -1;
     }
-    oldX = player.x;
+    for(int i=0;i<ENEMY_LIMIT;i++) {
+      if(!enemy[i].active)
+	continue;
+      enemy[i].oy = enemy[i].y;
+      enemy[i].ox = enemy[i].x;
+    }
     oldY = player.y;
-    oldCrX = creature.x;
+    oldX = player.x;
     oldCrY = creature.y;
-    oldEnX = energy.x;
+    oldCrX = creature.x;
     oldEnY = energy.y;
+    oldEnX = energy.x;
 
     kb_Scan();  /* get keys pressed */
 
@@ -118,13 +133,14 @@ int main(void) {
     if(programCounter % 5 == 0) {
       if(kb_Data[7] & kb_Down) {
 	player.dir = Down;
+	move = true;
 	if(player.y < mainMap.ymax) {
-	  if(empty(mainMap.map[player.y+1][player.x], Down) && !(blockedSpace(&creature, player.y+1, player.x) || blockedSpace(&energy, player.y+1, player.x))) {
+	  if(empty(mainMap.map[player.y+1][player.x], Down) && !(blockedSpace(&creature, player.y+1, player.x) || blockedSpace(&energy, player.y+1, player.x) || enemyBlock(enemy, player.y+1, player.x))) {
 	    dispUpd = true;
 	    player.y++;
 	  }
 	  else if(facing(&player, &mainMap) == i_xSuper && programCounter % 25 == 0) {
-	    /*  only check damage every 15 frames  */
+	    /*  only check damage every 25 frames  */
 	    player.hp--;
 	    statUpd = true;
 	  }
@@ -132,8 +148,9 @@ int main(void) {
       }
       if(kb_Data[7] & kb_Left) {
 	player.dir = Left;
+	move = true;
 	if(player.x > mainMap.xmin) {
-	  if(empty(mainMap.map[player.y][player.x-1], Left) && !(blockedSpace(&creature, player.y, player.x-1) || blockedSpace(&energy, player.y, player.x-1))) {
+	  if(empty(mainMap.map[player.y][player.x-1], Left) && !(blockedSpace(&creature, player.y, player.x-1) || blockedSpace(&energy, player.y, player.x-1) || enemyBlock(enemy, player.y, player.x-1))) {
 	    dispUpd = true;
 	    player.x--;
 	  }
@@ -146,8 +163,9 @@ int main(void) {
       }
       if(kb_Data[7] & kb_Right) {
 	player.dir = Right;
+	move = true;
 	if(player.x < mainMap.xmax) {
-	  if(empty(mainMap.map[player.y][player.x+1], Right) && !(blockedSpace(&creature, player.y, player.x+1) || blockedSpace(&energy, player.y, player.x+1))) {
+	  if(empty(mainMap.map[player.y][player.x+1], Right) && !(blockedSpace(&creature, player.y, player.x+1) || blockedSpace(&energy, player.y, player.x+1) || enemyBlock(enemy, player.y, player.x+1))) {
 	    dispUpd = true;
 	    player.x++;
 	  }
@@ -159,8 +177,9 @@ int main(void) {
       }
       if(kb_Data[7] & kb_Up) {
 	player.dir = Up;
+	move = true;
 	if(player.y > mainMap.ymin) {
-	  if(empty(mainMap.map[player.y-1][player.x], Up) && !(blockedSpace(&creature, player.y-1, player.x) || blockedSpace(&energy, player.y-1, player.x))) {
+	  if(empty(mainMap.map[player.y-1][player.x], Up) && !(blockedSpace(&creature, player.y-1, player.x) || blockedSpace(&energy, player.y-1, player.x) || enemyBlock(enemy, player.y-1, player.x))) {
 	    dispUpd = true;
 	    player.y--;
 	  }
@@ -185,6 +204,7 @@ int main(void) {
       }
       if(kb_Data[1] & kb_Yequ) {
 	/* capture */
+	move = true;
 	if(player.ep > 0 && canCatchCreature(&player, &creature, &mainMap)) {
 	  player.captures++;
 	  player.ep--;
@@ -212,6 +232,47 @@ int main(void) {
       /* break */
       run = false;
     }
+
+    /*   handle enemies   */
+    if(move) {
+      for(int i=0;i<ENEMY_LIMIT;i++) {
+	if(enemy[i].active) {
+	  uint8_t direc;
+	  switch(enemy[i].targetMode) {
+	  case Random:
+	    direc = randInt(0,4);  /*  up, clockwise.   4 means stay still  */
+	    switch(direc) {
+	    case 0: /*  move up  */
+	      if(enemy[i].y != 0 && enemyCanMove(mainMap.map[enemy[i].y-1][enemy[i].x], Up) && !(blockedSpace(&creature, enemy[i].y-1, enemy[i].x) || blockedSpace(&energy, enemy[i].y-1, enemy[i].x)) && !(player.y == enemy[i].y-1 && player.x == enemy[i].x)) {
+		enemy[i].y = enemy[i].y - 1;
+	      }
+	      break;
+	    case 1: /*  move right  */
+	      if(enemy[i].x != mainMap.xmax && enemyCanMove(mainMap.map[enemy[i].y][enemy[i].x+1], Right) && !(blockedSpace(&creature, enemy[i].y, enemy[i].x+1) || blockedSpace(&energy, enemy[i].y, enemy[i].x+1)) && !(player.y == enemy[i].y && player.x == enemy[i].x+1)) {
+		enemy[i].x = enemy[i].x + 1;
+	      }
+	    break;
+	    case 2: /*  move down  */
+	      if(enemy[i].y != mainMap.ymax && enemyCanMove(mainMap.map[enemy[i].y+1][enemy[i].x], Down) && !(blockedSpace(&creature, enemy[i].y+1, enemy[i].x) || blockedSpace(&energy, enemy[i].y+1, enemy[i].x)) && !(player.y == enemy[i].y+1 && player.x == enemy[i].x)) {
+		enemy[i].y = enemy[i].y + 1;
+	      }
+	      break;
+	    case 3: /*  move left  */
+	      if(enemy[i].x != 0 && enemyCanMove(mainMap.map[enemy[i].y][enemy[i].x-1], Left) && !(blockedSpace(&creature, enemy[i].y, enemy[i].x-1) || blockedSpace(&energy, enemy[i].y, enemy[i].x-1)) && !(player.y == enemy[i].y && player.x == enemy[i].x-1)) {
+		enemy[i].x = enemy[i].x - 1;
+	      }
+	      break;
+	    case 4: /*  don't move  */
+	      break;
+	    }
+	    break;
+	  default:
+	    break;
+	  }
+	}
+      }
+      dispUpd = true;
+    }
     
     if(oldX != player.x || oldY != player.y) {
       xlist[0] = oldX;
@@ -235,8 +296,22 @@ int main(void) {
       xlist[6] = fsx(&player, &mainMap);
       ylist[6] = fsy(&player, &mainMap);
     }
-    xlist[7] = -2;  /*  Terminate  */
-    ylist[7] = -2;
+    for(int i=0;i<ENEMY_LIMIT;i++) {  /*  update places where enemies spawn  */
+      if(!enemy[i].active) {
+	xlist[7+2*i] = -1;
+	xlist[8+2*i] = -1;
+	ylist[7+2*i] = -1;
+	ylist[8+2*i] = -1;
+      }
+      else if(enemy[i].ox != enemy[i].x || enemy[i].oy != enemy[i].y) {
+	xlist[7+2*i] = enemy[i].ox;
+	xlist[8+2*i] = enemy[i].x;
+	ylist[7+2*i] = enemy[i].oy;
+	ylist[8+2*i] = enemy[i].y;
+      }
+    }
+    xlist[7+2*ENEMY_LIMIT] = -2;  /*  Terminate  */
+    ylist[7+2*ENEMY_LIMIT] = -2;
 
     /*  refresh display */
     if(dispUpd || statUpd) {
@@ -261,20 +336,32 @@ int main(void) {
 	os_SetCursorPos(oldEnY, oldEnX + mainMap.xpad);
 	os_PutStrLine(" ");
       }
+      for(int i=0;i<ENEMY_LIMIT;i++) {  /*  update places where enemies spawn  */
+	if(enemy[i].active && (enemy[i].ox != enemy[i].x || enemy[i].oy != enemy[i].y)) {
+	  os_SetCursorPos(enemy[i].oy, enemy[i].ox + mainMap.xpad);
+	  os_PutStrLine(" ");
+	}
+      }
 
-      //mapDraw(&mainMap, false, oldY, oldCrY, oldEnY);
       newMapDraw(&mainMap, false, ylist, xlist);
 
       os_SetCursorPos(player.y, player.x + mainMap.xpad);
-      os_PutStrLine((c_theta));
+      os_PutStrLine(c_theta);
       os_SetCursorPos(creature.y, creature.x + mainMap.xpad);
-      os_PutStrLine((c_plotPlus));
+      os_PutStrLine(c_plotPlus);
       os_SetCursorPos(energy.y, energy.x + mainMap.xpad);
-      os_PutStrLine((c_plotBox));
+      os_PutStrLine(c_plotBox);
+      for(int i=0;i<ENEMY_LIMIT;i++) {
+	if(enemy[i].active) {
+	  os_SetCursorPos(enemy[i].y, enemy[i].x + mainMap.xpad);
+	  os_PutStrLine(c_chi);
+	}
+      }
     }
     dispUpd = false;
     statUpd = false;
     action = false;
+    move = false;
     programCounter += (programCounter==249? -249 : 1);
   } while(run);
   kb_DisableOnLatch();

@@ -12,6 +12,7 @@
   os_PutStrFull(st)
 
 enum Direction {Up, Down, Left, Right, Null=-1};
+
 struct Player {
   uint8_t x;
   uint8_t y;
@@ -42,15 +43,32 @@ struct Creature {
   uint8_t y;
   uint8_t id;
 };
-void initPlayer(struct Player *p);
-void initMap(struct Map *m);
-void initCreature(struct Creature *c);
+
+enum Target {Random, TowardPlayer, ChasePlayerSmart, NoTarget};
+
+struct Enemy {
+  uint8_t x;
+  uint8_t y;
+  uint8_t ox;
+  uint8_t oy;
+  uint8_t id;
+  enum Target targetMode;
+  bool active;
+};
+#define ENEMY_LIMIT 5
+void initPlayer(struct Player*);
+void initMap(struct Map*);
+void initCreature(struct Creature*);
+void initEnemy(struct Enemy*);
 void screenSetup();
 bool canCatchCreature(struct Player*, struct Creature*, struct Map*);
 void generateNewCreature(struct Player*, struct Map*, struct Creature*, struct Creature*);
 void generateNewCreatureSimple(struct Player*, struct Creature*, struct Map*);
 bool blockedSpace(struct Creature*, char, char);
+bool eBlockedSpace(struct Enemy*, char, char);
+bool enemyBlock(struct Enemy*, char, char);
 bool empty(uint8_t, enum Direction);
+bool enemyCanMove(uint8_t, enum Direction);
 bool creatureSpawn(uint8_t);
 void printNCharsOfInt(int24_t, size_t, char, char);
 void mapDraw(struct Map*, bool, char, char, char);

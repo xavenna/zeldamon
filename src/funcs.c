@@ -4,6 +4,7 @@
 #include <ti/getcsc.h>  /*  Included for the loading screen  */
 #include <ti/real.h>
 #include <sys/timers.h>
+#include <sys/util.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/util.h>
@@ -35,6 +36,16 @@ void initCreature(struct Creature *c) {
   c->x = 0;
   c->y = 0;
   c->id = 0;
+}
+
+void initEnemy(struct Enemy* e) {
+  e->x = 0;
+  e->y = 0;
+  e->ox = 0;
+  e->oy = 0;
+  e->id = 0;
+  e->targetMode = NoTarget;
+  e->active = false;
 }
 
 void screenSetup() {
@@ -120,6 +131,41 @@ bool empty(uint8_t val, enum Direction dir) {
     return true;
   }
 }
+
+bool enemyCanMove(uint8_t val, enum Direction dir) {  /*make sure this is accurate */
+  switch(val) {
+  case i_plotSquare:
+  case i_cursEq:
+  case i_small0:
+  case i_upExcl:
+  case i_deltaCap:
+  case i_delta:
+  case i_omega:
+  case i_xSuper:
+  case i_ellipsis:
+  case i_boldN:
+  case i_doubleCloseParen:
+  case i_cursDotOut:
+  case i_plotDot:
+  case i_cursCheck:
+  case '@':
+    return false;
+  case '<':
+    return dir != Right;
+  case '>':
+    return dir != Left;
+  case '^':
+    return dir != Down;
+  case 'v':
+    return dir != Up;
+  case '-':
+    return dir == Left || dir == Right;
+  case '|':
+    return dir == Up || dir == Down;
+  default:
+    return true;
+  }
+}
 bool creatureSpawn(uint8_t val) {
   /*  determines whether a creature can be spawned in on target space  */
   switch(val) {
@@ -154,6 +200,16 @@ bool creatureSpawn(uint8_t val) {
 
 bool blockedSpace(struct Creature* c, char y, char x) {
   return (c->x == x && c->y == y);
+}
+bool eBlockedSpace(struct Enemy* e, char y, char x) {
+  return (e->x == x && e->y == y);
+}
+bool enemyBlock(struct Enemy* e, char y, char x) { /* e is a pointer to an array of length ENEMY_LIMIT */
+  for(int i=0;i<ENEMY_LIMIT;i++) {
+    if(eBlockedSpace(&(e[i]), y, x))
+      return true;
+  }
+  return false;
 }
 
 void printNCharsOfInt(int24_t num, size_t len, char y, char x) {  /*  Only prints up to 12 chars  */
@@ -298,8 +354,10 @@ void handleFacingSpace(struct Player* p, struct Map* m, int fs) { /*  this handl
     break;
   case '@':
     /*  breakable wall  */
-    p->sw--;
-    m->map[fy][fx] = ' ';
+    if(p->sw>0) {
+      p->sw--;
+      m->map[fy][fx] = ' ';
+    }
     break;
   case i_cursDotOut:
     /*  locked door  */
