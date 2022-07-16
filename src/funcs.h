@@ -6,7 +6,7 @@
 #define SWORD_MAX_DURABILITY 5
 #define BOW_MAX_DURABILITY 5
 
-#define xv_Pause() while(!os_GetCSC())
+#define xv_Pause() while(os_GetCSC() != sk_Enter)
 #define xv_MoveCursorAndPrint(st, y, x) \
   os_SetCursorPos(y, x);		\
   os_PutStrFull(st)

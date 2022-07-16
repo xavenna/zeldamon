@@ -44,6 +44,7 @@ int main(void) {
     xlist[i] = -1;
     ylist[i] = -1;
   }
+
   struct Player player;
   struct Map mainMap;
   struct Creature creature;
@@ -56,7 +57,7 @@ int main(void) {
   for(int i=0;i<ENEMY_LIMIT;i++) {
     initEnemy(&(enemy[i]));
   }
-  enemy[0].active = true;
+  enemy[0].active = true;  /* setup just first enemy in list for now, eventually, all could be set up, depending on the level  */
   enemy[0].y = 7;
   enemy[0].x = 15;
   enemy[0].targetMode = Random;
@@ -91,18 +92,16 @@ int main(void) {
     strcpy(msg, "old lvl.");
   }
   else {
-    strcpy(msg, "inv msg.");
+    strcpy(msg, "inv code");
   }
   xv_MoveCursorAndPrint(msg, 4, 0);
       
-
-  os_SetCursorPos(3, 0);
-  os_PutStrFull("Press enter to start...   ");
+  xv_MoveCursorAndPrint("Press enter to start...   ", 3, 0);
 
   xv_Pause();
   os_ClrHome();
 
-  generateNewCreatureSimple(&player, &creature, &mainMap);
+  generateNewCreatureSimple(&player, &creature, &mainMap);  //this variant doesn't care where the other creature is
   generateNewCreature(&player, &mainMap, &energy, &creature);
 
   /*  Setup Status Screen  */
@@ -129,7 +128,7 @@ int main(void) {
 
     kb_Scan();  /* get keys pressed */
 
-    /*  only check key presses every 5 frames  */
+    /*  only check key presses every 5 frames to avoid multiple presses */
     if(programCounter % 5 == 0) {
       if(kb_Data[7] & kb_Down) {
 	player.dir = Down;
@@ -233,8 +232,34 @@ int main(void) {
       run = false;
     }
 
-    /*   handle enemies   */
-    if(move) {
+    if(move) {  /* things here only happen if the player pressed a button  */
+      /*   check if player lost health   */
+      for(int i=0;i<ENEMY_LIMIT;i++) {
+	if(!enemy[i].active && programCounter%25 != 0)
+	  continue;
+	if(player.y != 0) {
+	  if(enemy[i].x == player.x && enemy[i].y-1 == player.y) {
+	    player.hp--;
+	  }
+	}
+	if(player.y != mainMap.ymax) {
+	  if(enemy[i].x == player.x && enemy[i].y+1 == player.y) {
+	    player.hp--;
+	  }
+	}
+	if(player.x != 0) {
+	  if(enemy[i].x-1 == player.x && enemy[i].y == player.y) {
+	    player.hp--;
+	  }
+	}
+	if(player.x != mainMap.xmax) {
+	  if(enemy[i].x+1 == player.x && enemy[i].y == player.y) {
+	    player.hp--;
+	  }
+	}
+      }
+
+      /*   handle enemies   */
       for(int i=0;i<ENEMY_LIMIT;i++) {
 	if(enemy[i].active) {
 	  uint8_t direc;
@@ -325,45 +350,43 @@ int main(void) {
       delay(40);
 
       if(oldX != player.x || oldY != player.y) {
-	os_SetCursorPos(oldY, oldX + mainMap.xpad);
-	os_PutStrLine(" ");
+	xv_MoveCursorAndPrint(" ", oldY, oldX + mainMap.xpad);
       }
       if(oldCrX != creature.x || oldCrY != creature.y) {
-	os_SetCursorPos(oldCrY, oldCrX + mainMap.xpad);
-	os_PutStrLine(" ");
+	xv_MoveCursorAndPrint(" ", oldCrY, oldCrX + mainMap.xpad);
       }
       if(oldEnX != energy.x || oldEnY != energy.y) {
-	os_SetCursorPos(oldEnY, oldEnX + mainMap.xpad);
-	os_PutStrLine(" ");
+	xv_MoveCursorAndPrint(" ", oldEnY, oldEnX + mainMap.xpad);
       }
       for(int i=0;i<ENEMY_LIMIT;i++) {  /*  update places where enemies spawn  */
 	if(enemy[i].active && (enemy[i].ox != enemy[i].x || enemy[i].oy != enemy[i].y)) {
-	  os_SetCursorPos(enemy[i].oy, enemy[i].ox + mainMap.xpad);
-	  os_PutStrLine(" ");
+	  xv_MoveCursorAndPrint(" ", enemy[i].oy, enemy[i].ox + mainMap.xpad);
 	}
       }
 
       newMapDraw(&mainMap, false, ylist, xlist);
 
-      os_SetCursorPos(player.y, player.x + mainMap.xpad);
-      os_PutStrLine(c_theta);
-      os_SetCursorPos(creature.y, creature.x + mainMap.xpad);
-      os_PutStrLine(c_plotPlus);
-      os_SetCursorPos(energy.y, energy.x + mainMap.xpad);
-      os_PutStrLine(c_plotBox);
+      xv_MoveCursorAndPrint(c_theta, player.y, player.x + mainMap.xpad);
+      xv_MoveCursorAndPrint(c_plotPlus, creature.y, creature.x + mainMap.xpad);
+      xv_MoveCursorAndPrint(c_plotBox, energy.y, energy.x + mainMap.xpad);
       for(int i=0;i<ENEMY_LIMIT;i++) {
 	if(enemy[i].active) {
-	  os_SetCursorPos(enemy[i].y, enemy[i].x + mainMap.xpad);
-	  os_PutStrLine(c_chi);
+	  xv_MoveCursorAndPrint(c_chi, enemy[i].y, enemy[i].x + mainMap.xpad);
 	}
       }
     }
+    if(player.hp == 0)
+      run = false;
     dispUpd = false;
     statUpd = false;
     action = false;
     move = false;
     programCounter += (programCounter==249? -249 : 1);
   } while(run);
+  /*  draw the end screen  */
+  os_ClrHome();
+  xv_MoveCursorAndPrint("You seem to have died...",  0,  0);
+  xv_Pause();
   kb_DisableOnLatch();
   return 0;
 }
